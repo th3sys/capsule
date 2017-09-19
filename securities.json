@@ -1,0 +1,40 @@
+[
+  {
+    "Symbol" : "VIX",
+    "ProductType" : "IND",
+    "SubscriptionEnabled" : true,
+    "TradingEnabled" : false,
+    "Description" : {
+      "Name" : "Volatility Index",
+      "Exchange" : "CBOE",
+      "MarketGroup" : "Indices"
+    },
+    "Risk" : {
+      "RiskFactor": 0.0,
+      "MaxPosition": 0,
+      "Margin": {
+        "Amount" : 0,
+        "Currency" : "USD"
+      }
+    }
+  },
+  {
+    "Symbol" : "VX",
+    "ProductType" : "FUT",
+    "SubscriptionEnabled" : true,
+    "TradingEnabled" : true,
+    "Description" : {
+      "Name" : "Volatility Index Future",
+      "Exchange" : "CFE",
+      "MarketGroup" : "Indices"
+    },
+    "Risk" : {
+      "RiskFactor":0.7,
+      "MaxPosition": 1,
+      "Margin": {
+        "Amount" : 6215,
+        "Currency" : "USD"
+      }
+    }
+  }
+]
