@@ -89,7 +89,7 @@ class IbApp(EClient, ibapi.wrapper.EWrapper):
 
     @iswrapper
     def contractDetails(self, reqId: int, contractDetails: ContractDetails):
-        super().contractDetails(reqId, contractDetails)
+        super(IbApp, self).contractDetails(reqId, contractDetails)
         self.Logger.info(contractDetails.summary)
         for contract in self.requestedContracts:
             if contract.symbol == contractDetails.summary.symbol or contract.symbol == contractDetails.marketName:
@@ -104,23 +104,36 @@ class IbApp(EClient, ibapi.wrapper.EWrapper):
 
     @iswrapper
     def contractDetailsEnd(self, reqId: int):
-        super().contractDetailsEnd(reqId)
+        super(IbApp, self).contractDetailsEnd(reqId)
         self.Logger.info("ContractDetailsEnd. %s" % reqId)
         for contract, details, valid in self.validatedContracts:
             if valid:
                 cId = self.nextOrderId()
                 self.contractLookup[cId] = contract.localSymbol
-                self.reqMktData(cId, contract, "", True, False, [])
+                # self.reqMktData(cId, contract, "", True, False, [])
+                self.reqHistoricalData(cId, contract, '', "1 Y", "1 day", "TRADES", 1, 1, [])
         del self.validatedContracts[:]
 
     @iswrapper
+    def historicalData(self, reqId: TickerId, date: str, opn: float, high: float,
+                       low: float, close: float, volume: int, barCount: int, WAP: float, hasGaps: int):
+        self.Logger.info("HistoricalData. " + str(reqId) + " Date: " + date + " Open: " + str(opn) +
+                         " High: " + str(high) + " Low: " + str(low) + " Close: " + str(close) + " Volume: "
+                         + str(volume) + " Count: " + str(barCount) + " WAP: " + str(WAP))
+
+    @iswrapper
+    def historicalDataEnd(self, reqId: int, start: str, end: str):
+        super(IbApp, self).historicalDataEnd(reqId, start, end)
+        self.Logger.info("HistoricalDataEnd " + str(reqId) + "from" + start + "to" + end)
+
+    @iswrapper
     def tickSnapshotEnd(self, reqId: int):
-        super().tickSnapshotEnd(reqId)
+        super(IbApp, self).tickSnapshotEnd(reqId)
         self.Logger.info("TickSnapshotEnd: %s", reqId)
 
     @iswrapper
     def nextValidId(self, orderId: int):
-        super().nextValidId(orderId)
+        super(IbApp, self).nextValidId(orderId)
 
         self.Logger.info("setting nextValidOrderId: %d", orderId)
         self.nextValidOrderId = orderId
@@ -129,32 +142,32 @@ class IbApp(EClient, ibapi.wrapper.EWrapper):
 
     @iswrapper
     def marketDataType(self, reqId: TickerId, marketDataType: int):
-        super().marketDataType(reqId, marketDataType)
+        super(IbApp, self).marketDataType(reqId, marketDataType)
         self.Logger.info("MarketDataType. %s Type: %s" % (reqId, marketDataType))
 
     @iswrapper
     def error(self, *args):
-        super().error(*args)
+        super(IbApp, self).error(*args)
         self.Logger.error('error received. ReqId: %s' % args[0])
 
     @iswrapper
     def winError(self, *args):
-        super().error(*args)
+        super(IbApp, self).error(*args)
 
     @iswrapper
     def currentTime(self, tim: int):
-        super().currentTime(tim)
+        super(IbApp, self).currentTime(tim)
         self.Logger.info('currentTime: %s' % tim)
 
     @iswrapper
     def tickPrice(self, tickerId: TickerId, tickType: TickType, price: float, attrib):
-        super().tickPrice(tickerId, tickType, price, attrib)
+        super(IbApp, self).tickPrice(tickerId, tickType, price, attrib)
         symbol = self.contractLookup[tickerId]
         self.Logger.info('%s %s %s %s IB' % (datetime.datetime.now(), symbol, TickTypeEnum.to_str(tickType), price))
 
     @iswrapper
     def tickSize(self, tickerId: TickerId, tickType: TickType, size: int):
-        super().tickSize(tickerId, tickType, size)
+        super(IbApp, self).tickSize(tickerId, tickType, size)
         symbol = self.contractLookup[tickerId]
         self.Logger.info('%s %s %s %s IB' % (datetime.datetime.now(), symbol, TickTypeEnum.to_str(tickType), size))
 
