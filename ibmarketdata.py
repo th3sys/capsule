@@ -5,6 +5,22 @@ from ibapi.contract import *
 from ibapi.ticktype import TickType, TickTypeEnum
 from ibapi.utils import *
 import datetime
+import json
+import decimal
+import boto3
+import time
+from botocore.exceptions import ClientError
+
+
+# Helper class to convert a DynamoDB item to JSON.
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            if o % 1 > 0:
+                return float(o)
+            else:
+                return int(o)
+        return super(DecimalEncoder, self).default(o)
 
 
 class IbApp(EClient, ibapi.wrapper.EWrapper):
@@ -18,24 +34,48 @@ class IbApp(EClient, ibapi.wrapper.EWrapper):
         self.requestedContracts = []
         self.validatedContracts = []
         self.contractLookup = {}
+        db = boto3.resource('dynamodb', region_name='us-east-1')
+        self.__Securities = db.Table('Securities')
+
+    def reliable(self, callme):
+        tries = 0
+        items = callme()
+        if items is None:
+            while items is None or tries < 10:
+                tries += 1
+                time.sleep(2 * tries)
+                self.Logger.warning('Delayed by %s. Attempt number %s ...' % (2*tries, tries))
+                items = callme()
+        return items
+
+    def getSecurities(self):
+        try:
+            response = self.__Securities.scan()
+
+        except ClientError as e:
+            self.Logger.error(e.response['Error']['Message'])
+            return None
+        except Exception as e:
+            self.Logger.error(e)
+            return None
+        else:
+            # self.Logger.info(json.dumps(security, indent=4, cls=DecimalEncoder))
+            if 'Items' in response:
+                return response['Items']
 
     def start(self):
-        contract1 = Contract()
-        contract1.symbol = "VIX"
-        contract1.secType = "IND"
-        contract1.exchange = "CBOE"
+        items = self.reliable(self.getSecurities)
 
-        self.requestedContracts.append(contract1)
-        self.reqContractDetails(self.nextReqId(), contract1)
-
-        contract = Contract()
-        contract.symbol = "VX"
-        contract.secType = "FUT"
-        contract.exchange = "CFE"
-        contract.tradingClass = "VX"
-
-        self.requestedContracts.append(contract)
-        self.reqContractDetails(self.nextReqId(), contract)
+        for sec in items:
+            if sec['SubscriptionEnabled']:
+                contract = Contract()
+                contract.symbol = sec['Symbol']
+                contract.secType = sec['ProductType']
+                contract.exchange = sec['Description']['Exchange']
+                if contract.secType == 'FUT':
+                    contract.tradingClass = sec['Symbol']
+                self.requestedContracts.append(contract)
+                self.reqContractDetails(self.nextReqId(), contract)
 
     def nextReqId(self):
         reqId = self.nextValidReqId
@@ -61,8 +101,6 @@ class IbApp(EClient, ibapi.wrapper.EWrapper):
                 validated.lastTradeDateOrContractMonth = contractDetails.summary.lastTradeDateOrContractMonth
                 validated.localSymbol = contractDetails.summary.localSymbol
                 self.validatedContracts.append((validated, contractDetails, True))
-            else:
-                self.Logger.warning('contractDetails.marketName: %s unknown' % contractDetails.marketName)
 
     @iswrapper
     def contractDetailsEnd(self, reqId: int):
