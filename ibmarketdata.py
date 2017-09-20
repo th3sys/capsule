@@ -23,6 +23,24 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(o)
 
 
+class Utils(object):
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def reliable(func):
+        def _decorator(self, *args, **kwargs):
+            tries = 0
+            result = func(self, *args, **kwargs)
+            if result is None:
+                while result is None and tries < 10:
+                    tries += 1
+                    time.sleep(2 ** tries)
+                    result = func(self, *args, **kwargs)
+            return result
+        return _decorator
+
+
 class IbApp(EClient, ibapi.wrapper.EWrapper):
     def __init__(self):
         self.Logger = logging.getLogger()
@@ -37,21 +55,11 @@ class IbApp(EClient, ibapi.wrapper.EWrapper):
         db = boto3.resource('dynamodb', region_name='us-east-1')
         self.__Securities = db.Table('Securities')
 
-    def reliable(self, callme):
-        tries = 0
-        items = callme()
-        if items is None:
-            while items is None or tries < 10:
-                tries += 1
-                time.sleep(2 * tries)
-                self.Logger.warning('Delayed by %s. Attempt number %s ...' % (2*tries, tries))
-                items = callme()
-        return items
-
+    @Utils.reliable
     def getSecurities(self):
         try:
+            self.Logger.info('Calling securities scan ...')
             response = self.__Securities.scan()
-
         except ClientError as e:
             self.Logger.error(e.response['Error']['Message'])
             return None
@@ -64,7 +72,7 @@ class IbApp(EClient, ibapi.wrapper.EWrapper):
                 return response['Items']
 
     def start(self):
-        items = self.reliable(self.getSecurities)
+        items = self.getSecurities()
 
         for sec in items:
             if sec['SubscriptionEnabled']:
@@ -111,7 +119,7 @@ class IbApp(EClient, ibapi.wrapper.EWrapper):
                 cId = self.nextOrderId()
                 self.contractLookup[cId] = contract.localSymbol
                 # self.reqMktData(cId, contract, "", True, False, [])
-                self.reqHistoricalData(cId, contract, '', "1 Y", "1 day", "TRADES", 1, 1, [])
+                self.reqHistoricalData(cId, contract, '', "2 Y", "1 day", "TRADES", 1, 1, [])
         del self.validatedContracts[:]
 
     @iswrapper
