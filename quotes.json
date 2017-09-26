@@ -1,0 +1,15 @@
+[
+  {
+    "Symbol" : "VXU7",
+    "Date" : "1499723976.27",
+    "Source" : "IB",
+    "Details" : {
+        "Open" : 10.04,
+        "Close" : 9.78,
+        "High" : 10.67,
+        "Low" : 9.67,
+        "Volume" : 0,
+        "Count" : 814
+    }
+  }
+]
