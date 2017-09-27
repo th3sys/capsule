@@ -2,6 +2,7 @@ import datetime
 import decimal
 import json
 import queue
+import decimal
 import time
 import argparse
 import boto3
@@ -106,6 +107,7 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
         self.historicalLookup = {}
         db = boto3.resource('dynamodb', region_name='us-east-1')
         self.__Securities = db.Table('Securities')
+        self.__QuotesEod = db.Table('Quotes.EOD')
 
     def __del__(self):
         self.disconnect()
@@ -126,6 +128,34 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
             # self.Logger.info(json.dumps(security, indent=4, cls=DecimalEncoder))
             if 'Items' in response:
                 return response['Items']
+
+    def UpdateQuote(self, symbol, date, opn, close, high, low, volume, barCount):
+        try:
+            details = {"Open": decimal.Decimal(str(opn)), "Close": decimal.Decimal(str(close)),
+                       "High": decimal.Decimal(str(high)), "Low": decimal.Decimal(str(low)),
+                       "Volume": volume, "Count": barCount}
+            response = self.__QuotesEod.update_item(
+                Key={
+                    'Symbol': symbol,
+                    'Date': date,
+                },
+                UpdateExpression="set #d = :d, #s = :s",
+                ExpressionAttributeNames={
+                    '#d': 'Details',
+                    '#s': 'Source',
+                },
+                ExpressionAttributeValues={
+                    ':d': details,
+                    ':s': 'IB',
+                },
+                ReturnValues="UPDATED_NEW")
+
+        except ClientError as e:
+            self.Logger.error(e.response['Error']['Message'])
+        except Exception as e:
+            self.Logger.error(e)
+        else:
+            self.Logger.debug(json.dumps(response, indent=4, cls=DecimalEncoder))
 
     def verify(self):
         self.Logger.info('requesting server time')
@@ -213,6 +243,8 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
                          + str(volume) + " Count: " + str(barCount) + " WAP: " + str(WAP))
         if reqId in self.requestedHistoricalData:
             del self.requestedHistoricalData[reqId]
+
+        self.UpdateQuote(sym, date, opn, close, high, low, volume, barCount)
 
     @iswrapper
     def historicalDataEnd(self, reqId: int, start: str, end: str):
