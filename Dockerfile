@@ -3,6 +3,7 @@ FROM ubuntu:14.04
 # Install dependencies
 RUN apt-get update -y
 RUN apt-get install -y supervisor
+RUN apt-get install -y python3-pip
 
 # create directories
 RUN mkdir -p /capsule/sim/gw
@@ -42,11 +43,22 @@ RUN apt-get install -y unzip
 RUN unzip IBControllerV2-11-0.zip -d /capsule/sim/gw
 ADD docker_files/IBController.ini /capsule/sim/gw/IBController.ini
 ADD docker_files/gw.sh /capsule/gw.sh
+
+# Python
+RUN cd /capsule
+RUN wget https://raw.githubusercontent.com/th3sys/capsule/master/ibmarketdata.py -P /capsule
+RUN pip3 install boto3
+RUN mkdir /capsule/api
+RUN mkdir /capsule/ibapi
+RUN wget http://interactivebrokers.github.io/downloads/twsapi_macunix.973.05.zip
+RUN unzip -o twsapi_macunix.973.05.zip -d /capsule/api
+RUN cp -r /capsule/api/IBJts/source/pythonclient/ibapi/* /capsule/ibapi
+
+# Scripts
 RUN chmod +x /capsule/gw.sh
 ADD docker_files/supervisord.conf /capsule/supervisord.conf
 ADD docker_files/start.sh /capsule/start.sh
 RUN chmod +x /capsule/start.sh
-
 
 EXPOSE 4001
 ENTRYPOINT ["/capsule/start.sh", "-D", "FOREGROUND"]

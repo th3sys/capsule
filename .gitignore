@@ -2,3 +2,4 @@
 DockerBuild
 DockerTask.json
 IBController.ini
+credentials.aws

@@ -3,7 +3,9 @@ echo 'starting vnc'
 /capsule/vnc.sh start
 echo 'starting gateway'
 supervisord -c /capsule/supervisord.conf
-sleep 5
-echo 'done'
-ps -aef | grep Xtightvnc
-tail -f /capsule/sim/gw/ibgateway.log
+sleep 30
+echo 'starting ibmarketdata'
+python3 /capsule/ibmarketdata.py --host "127.0.0.1" --port 4001 --clientId 0
+#echo 'done'
+#ps -aef | grep Xtightvnc
+#tail -f /capsule/sim/gw/ibgateway.log
