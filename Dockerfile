@@ -2,9 +2,10 @@ FROM ubuntu:14.04
 
 # Install dependencies
 RUN apt-get update -y
+RUN apt-get install -y supervisor
 
 # create directories
-RUN mkdir -p /capsule/gw
+RUN mkdir -p /capsule/sim/gw
 
 # Install tightvnc
 ENV DEBIAN_FRONTEND noninteractive
@@ -35,15 +36,17 @@ RUN cd /capsule
 RUN wget https://github.com/ib-controller/ib-controller/releases/download/2.11.0/IBControllerV2-11-0.zip
 RUN wget https://download2.interactivebrokers.com/download/unixmacosx_latest.jar
 RUN jar xf unixmacosx_latest.jar
-RUN cp IBJts/* /capsule/gw
+RUN cp IBJts/* /capsule/sim/gw
 RUN rm -rf IBJts
 RUN apt-get install -y unzip
-RUN unzip IBControllerV2-11-0.zip -d /capsule/gw
-ADD docker_files/IBController.ini /capsule/gw/IBController.ini
-ADD docker_files/gw.sh /capsule/gw/gw.sh
-RUN chmod +x /capsule/gw/gw.sh
-
+RUN unzip IBControllerV2-11-0.zip -d /capsule/sim/gw
+ADD docker_files/IBController.ini /capsule/sim/gw/IBController.ini
+ADD docker_files/gw.sh /capsule/gw.sh
+RUN chmod +x /capsule/gw.sh
+ADD docker_files/supervisord.conf /capsule/supervisord.conf
+ADD docker_files/start.sh /capsule/start.sh
+RUN chmod +x /capsule/start.sh
 
 
 EXPOSE 4001
-ENTRYPOINT ["/capsule/gw/gw.sh", "start", "gw", "-D", "FOREGROUND"]
+ENTRYPOINT ["/capsule/start.sh", "-D", "FOREGROUND"]
