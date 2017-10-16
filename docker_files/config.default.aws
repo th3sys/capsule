@@ -1,0 +1,5 @@
+[default]
+role_arn = some_role_with_boto_and_email_rights
+source_profile = default
+output = json
+region = us-east-1

@@ -48,6 +48,8 @@ ADD docker_files/gw.sh /capsule/gw.sh
 RUN cd /capsule
 RUN wget https://raw.githubusercontent.com/th3sys/capsule/master/ibmarketdata.py -P /capsule
 RUN pip3 install boto3
+ADD docker_files/credentials.aws /root/.aws/credentials
+ADD docker_files/config.aws /root/.aws/config
 RUN mkdir /capsule/api
 RUN mkdir /capsule/ibapi
 RUN wget http://interactivebrokers.github.io/downloads/twsapi_macunix.973.05.zip

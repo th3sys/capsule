@@ -1,5 +1,4 @@
 import datetime
-import decimal
 import json
 import queue
 import decimal
@@ -165,7 +164,7 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
             self.Logger.info('re-requesting contract details for: %s' % value.symbol)
 
         for key, value in self.requestedHistoricalData.items():
-            self.reqHistoricalData(key, value, '', "2 D", "1 day", "TRADES", 1, 1, [])
+            self.reqHistoricalData(key, value, '', "2 D", "1 day", "TRADES", 1, 1, False, list("XYZ"))
             self.Logger.info('re-requesting Historical Data for: %s' % value.symbol)
 
         for key, value in self.requestedMarketData.items():
@@ -222,7 +221,7 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
             hId = self.nextReqId()
             self.historicalLookup[hId] = validated.localSymbol
             self.requestedHistoricalData[hId] = validated
-            self.reqHistoricalData(hId, validated, '', "2 D", "1 day", "TRADES", 1, 1, [])
+            self.reqHistoricalData(hId, validated, '', "2 D", "1 day", "TRADES", 1, 1, False, list("XYZ"))
 
         else:
             self.Logger.warning('Unknown contract received %s' % contractDetails.summary)
@@ -234,17 +233,16 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
         del self.requestedContracts[reqId]
 
     @iswrapper
-    def historicalData(self, reqId: TickerId, date: str, opn: float, high: float,
-                       low: float, close: float, volume: int, barCount: int, WAP: float, hasGaps: int):
+    def historicalData(self, reqId: TickerId, bar: BarData):
         sym = self.historicalLookup[reqId]
 
-        self.Logger.info("HistoricalData. " + sym + " Date: " + date + " Open: " + str(opn) +
-                         " High: " + str(high) + " Low: " + str(low) + " Close: " + str(close) + " Volume: "
-                         + str(volume) + " Count: " + str(barCount) + " WAP: " + str(WAP))
+        self.Logger.info("HistoricalData. " + sym + " Date: " + bar.date + " Open: " + str(bar.open) +
+                         " High: " + str(bar.high) + " Low: " + str(bar.low) + " Close: " + str(bar.close) + " Volume: "
+                         + str(bar.volume) + " Count: " + str(bar.barCount))
         if reqId in self.requestedHistoricalData:
             del self.requestedHistoricalData[reqId]
 
-        self.UpdateQuote(sym, date, opn, close, high, low, volume, barCount)
+        self.UpdateQuote(sym, bar.date, bar.open, bar.close, bar.high, bar.low, bar.volume, bar.barCount)
 
     @iswrapper
     def historicalDataEnd(self, reqId: int, start: str, end: str):
