@@ -47,6 +47,7 @@ ADD docker_files/gw.sh /capsule/gw.sh
 # Python
 RUN cd /capsule
 RUN wget https://raw.githubusercontent.com/th3sys/capsule/master/ibmarketdata.py -P /capsule
+#ADD ibmarketdata.py /capsule/ibmarketdata.py
 RUN pip3 install boto3
 ADD docker_files/credentials.aws /root/.aws/credentials
 ADD docker_files/config.aws /root/.aws/config

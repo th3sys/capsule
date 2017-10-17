@@ -2,6 +2,7 @@ import datetime
 import json
 import queue
 import decimal
+import distutils.util
 import time
 import argparse
 import boto3
@@ -92,7 +93,9 @@ class InterruptableClient(EClient):
 
 
 class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
-    def __init__(self):
+    def __init__(self, real, hist):
+        self.__subRealMD = real
+        self.__subHistMD = hist
         self.Logger = logging.getLogger()
         self.Logger.setLevel(logging.INFO)
         logging.basicConfig(format='%(asctime)s - %(levelname)s - %(threadName)s - %(message)s')
@@ -163,18 +166,21 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
             self.reqContractDetails(key, value)
             self.Logger.info('re-requesting contract details for: %s' % value.symbol)
 
-        for key, value in self.requestedHistoricalData.items():
-            self.reqHistoricalData(key, value, '', "2 D", "1 day", "TRADES", 1, 1, False, list("XYZ"))
-            self.Logger.info('re-requesting Historical Data for: %s' % value.symbol)
+        if self.__subHistMD:
+            for key, value in self.requestedHistoricalData.items():
+                self.reqHistoricalData(key, value, '', "2 D", "1 day", "TRADES", 1, 1, False, list("XYZ"))
+                self.Logger.info('re-requesting Historical Data for: %s' % value.symbol)
 
-        for key, value in self.requestedMarketData.items():
-            self.reqMktData(key, value, "", True, False, [])
-            self.Logger.info('re-requesting Market Data for: %s' % value.symbol)
+        if self.__subRealMD:
+            for key, value in self.requestedMarketData.items():
+                self.reqMktData(key, value, "", True, False, [])
+                self.Logger.info('re-requesting Market Data for: %s' % value.symbol)
 
     def loop(self):
         self.runnable(self.verify)
 
     def start(self):
+        self.Logger.info('start for read data %s and historical %s' % (self.__subRealMD, self.__subHistMD))
         items = self.getSecurities()
 
         for sec in items:
@@ -203,6 +209,9 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
     def contractDetails(self, reqId: int, contractDetails: ContractDetails):
         super(IbApp, self).contractDetails(reqId, contractDetails)
         self.Logger.info('contractDetails received %s ' % contractDetails.summary)
+        if reqId not in self.requestedContracts:
+            self.Logger.warning('Unknown contractDetails reqId: %s' % reqId)
+            return
         contract = self.requestedContracts[reqId]
         if contract.symbol == contractDetails.summary.symbol or contract.symbol == contractDetails.marketName:
             validated = Contract()
@@ -213,15 +222,17 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
             validated.lastTradeDateOrContractMonth = contractDetails.summary.lastTradeDateOrContractMonth
             validated.localSymbol = contractDetails.summary.localSymbol
 
-            cId = self.nextReqId()
-            self.marketDataLookup[cId] = validated.localSymbol
-            self.requestedMarketData[cId] = validated
-            self.reqMktData(cId, contract, "", True, False, [])
+            if self.__subRealMD:
+                cId = self.nextReqId()
+                self.marketDataLookup[cId] = validated.localSymbol
+                self.requestedMarketData[cId] = validated
+                self.reqMktData(cId, contract, "", True, False, [])
 
-            hId = self.nextReqId()
-            self.historicalLookup[hId] = validated.localSymbol
-            self.requestedHistoricalData[hId] = validated
-            self.reqHistoricalData(hId, validated, '', "2 D", "1 day", "TRADES", 1, 1, False, list("XYZ"))
+            if self.__subHistMD:
+                hId = self.nextReqId()
+                self.historicalLookup[hId] = validated.localSymbol
+                self.requestedHistoricalData[hId] = validated
+                self.reqHistoricalData(hId, validated, '', "2 D", "1 day", "TRADES", 1, 1, False, list("XYZ"))
 
         else:
             self.Logger.warning('Unknown contract received %s' % contractDetails.summary)
@@ -230,7 +241,8 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
     def contractDetailsEnd(self, reqId: int):
         super(IbApp, self).contractDetailsEnd(reqId)
         self.Logger.info("ContractDetailsEnd. %s" % reqId)
-        del self.requestedContracts[reqId]
+        if reqId in self.requestedContracts:
+            del self.requestedContracts[reqId]
 
     @iswrapper
     def historicalData(self, reqId: TickerId, bar: BarData):
@@ -271,7 +283,6 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
     @iswrapper
     def error(self, *args):
         super(IbApp, self).error(*args)
-        self.Logger.error('error received. ReqId: %s' % args[0])
 
     @iswrapper
     def winError(self, *args):
@@ -300,9 +311,11 @@ def main():
     parser.add_argument('--host', help='IB host', required=True)
     parser.add_argument('--port', help='IB port', type=int, required=True)
     parser.add_argument('--clientId', help='IB client id', type=int, required=True)
+    parser.add_argument('--real', help='IB Market Data', type=lambda x:bool(distutils.util.strtobool(x)), required=True)
+    parser.add_argument('--hist', help='IB Historical', type=lambda x:bool(distutils.util.strtobool(x)), required=True)
     args = parser.parse_args()
 
-    app = IbApp()
+    app = IbApp(args.real, args.hist)
     app.connect(args.host, args.port, args.clientId)
     app.Logger.info("serverVersion:%s connectionTime:%s" % (app.serverVersion(), app.twsConnectionTime()))
 
