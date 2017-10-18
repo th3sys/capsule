@@ -2,6 +2,8 @@ import datetime
 import json
 import queue
 import decimal
+import uuid
+import inspect
 import distutils.util
 import time
 import argparse
@@ -92,13 +94,61 @@ class InterruptableClient(EClient):
             self.disconnect()
 
 
+class CloudLogger(object):
+    def __init__(self):
+        self.__fileLogger = logging.getLogger()
+        self.__fileLogger.setLevel(logging.INFO)
+        logging.basicConfig(format='%(asctime)s - %(levelname)s - %(threadName)s - %(message)s')
+        self.__cloudWatchLogger = boto3.client('logs')
+        self.__groupName = '/aws/docker/Capsule'
+        self.__sequenceToken = None
+        self.__stream = (datetime.datetime.today().strftime('%Y/%m/%d/[$LATEST]'), uuid.uuid4().hex)
+        response = self.__cloudWatchLogger.create_log_stream(
+            logGroupName=self.__groupName,
+            logStreamName='%s%s' % self.__stream
+        )
+        self.info('LogStream Created: %s' % response)
+
+    def __logToStream(self, msg):
+        if self.__sequenceToken is None:
+            response = self.__cloudWatchLogger\
+                .put_log_events(logGroupName=self.__groupName, logStreamName='%s%s' % self.__stream,
+                                logEvents=[dict(timestamp=int(round(time.time() * 1000)),
+                                                message=time.strftime("%m/%d/%Y %H:%M:%S") + msg)])
+        else:
+            response = self.__cloudWatchLogger\
+                .put_log_events(logGroupName=self.__groupName, logStreamName='%s%s' % self.__stream,
+                                logEvents=[dict(timestamp=int(round(time.time() * 1000)),
+                                                message=msg)],
+                                sequenceToken=self.__sequenceToken)
+        self.__sequenceToken = response['nextSequenceToken']
+
+    def info(self, msg):
+        self.__fileLogger.info(msg)
+        name = inspect.getframeinfo(inspect.currentframe()).function.upper()
+        self.__logToStream('%s [%s] %s' % (time.strftime("%m/%d/%Y %H:%M:%S"), name,  msg))
+
+    def debug(self, msg):
+        self.__fileLogger.debug(msg)
+        name = inspect.getframeinfo(inspect.currentframe()).function.upper()
+        self.__logToStream('%s [%s] %s' % (time.strftime("%m/%d/%Y %H:%M:%S"), name, msg))
+
+    def warning(self, msg):
+        self.__fileLogger.warning(msg)
+        name = inspect.getframeinfo(inspect.currentframe()).function.upper()
+        self.__logToStream('%s [%s] %s' % (time.strftime("%m/%d/%Y %H:%M:%S"), name, msg))
+
+    def error(self, msg):
+        self.__fileLogger.error(msg)
+        name = inspect.getframeinfo(inspect.currentframe()).function.upper()
+        self.__logToStream('%s [%s] %s' % (time.strftime("%m/%d/%Y %H:%M:%S"), name, msg))
+
+
 class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
     def __init__(self, real, hist):
         self.__subRealMD = real
         self.__subHistMD = hist
-        self.Logger = logging.getLogger()
-        self.Logger.setLevel(logging.INFO)
-        logging.basicConfig(format='%(asctime)s - %(levelname)s - %(threadName)s - %(message)s')
+        self.Logger = CloudLogger()
         InterruptableClient.__init__(self)
         self.nextValidOrderId = None
         self.nextValidReqId = None
@@ -113,7 +163,6 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
 
     def __del__(self):
         self.disconnect()
-        self.Logger.info('disconnected')
 
     @Utils.reliable
     def getSecurities(self):
@@ -264,13 +313,13 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
     @iswrapper
     def tickSnapshotEnd(self, reqId: int):
         super(IbApp, self).tickSnapshotEnd(reqId)
-        self.Logger.info("TickSnapshotEnd: %s", reqId)
+        self.Logger.info("TickSnapshotEnd: %s" % reqId)
 
     @iswrapper
     def nextValidId(self, orderId: int):
         super(IbApp, self).nextValidId(orderId)
 
-        self.Logger.info("setting nextValidOrderId: %d", orderId)
+        self.Logger.info("setting nextValidOrderId: %d" % orderId)
         self.nextValidOrderId = orderId
         self.nextValidReqId = orderId
         self.start()
@@ -311,8 +360,9 @@ def main():
     parser.add_argument('--host', help='IB host', required=True)
     parser.add_argument('--port', help='IB port', type=int, required=True)
     parser.add_argument('--clientId', help='IB client id', type=int, required=True)
-    parser.add_argument('--real', help='IB Market Data', type=lambda x:bool(distutils.util.strtobool(x)), required=True)
-    parser.add_argument('--hist', help='IB Historical', type=lambda x:bool(distutils.util.strtobool(x)), required=True)
+    parser.add_argument('--real', help='IB Market Data', type=lambda x: bool(distutils.util.strtobool(x)),
+                        required=True)
+    parser.add_argument('--hist', help='IB Historical', type=lambda x: bool(distutils.util.strtobool(x)), required=True)
     args = parser.parse_args()
 
     app = IbApp(args.real, args.hist)
