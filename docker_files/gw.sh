@@ -1,9 +1,10 @@
 #!/bin/sh
+cd /capsule/sim/gw
 export DISPLAY=:1
 ROOTDIR=$( cd "$( dirname "$0" )" && pwd )
 INSTANCE=$2
 WORKINGDIR=$ROOTDIR/$INSTANCE
-JAVA_HOME=/usr/lib/jvm/java-8-oracle
+JAVA_HOME=/usr
 PATH=$JAVA_HOME/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 JAVA=$JAVA_HOME/bin/java
 COMMAND="$JAVA -cp jts.jar:total.2013.jar:IBController.jar ibcontroller.IBGatewayController IBController.ini"

@@ -4,6 +4,7 @@ FROM ubuntu:14.04
 RUN apt-get update -y
 RUN apt-get install -y supervisor
 RUN apt-get install -y python3-pip
+RUN apt-get install -y wget
 
 # create directories
 RUN mkdir -p /capsule/sim/gw
@@ -24,13 +25,13 @@ RUN chmod +x /capsule/vnc.sh
 
 
 # Install Oracle's JDK
-ENV JAVA_HOME       /usr/lib/jvm/java-8-oracle
-RUN echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | debconf-set-selections
-RUN echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu xenial main" > /etc/apt/sources.list.d/webupd8team-java-trusty.list
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys EEA14886
-RUN apt-get update && \
-   apt-get install -y --no-install-recommends oracle-java8-installer && \
-   apt-get clean all
+RUN apt-get install -y --no-install-recommends software-properties-common
+RUN add-apt-repository -y ppa:openjdk-r/ppa
+RUN apt-get update
+RUN apt-get install -y openjdk-8-jdk
+RUN apt-get install -y openjdk-8-jre
+RUN update-alternatives --config java
+RUN update-alternatives --config javac
 
 # Install IB
 RUN cd /capsule
