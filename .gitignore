@@ -1,4 +1,4 @@
-.idea
+.idea/*
 DockerBuild
 DockerTask.json
 IBController.ini
