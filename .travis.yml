@@ -1,6 +1,9 @@
 language: python
 python:
   - "3.6"
-  
+
+# command to install dependencies
+install: "pip install boto3"
+
 # command to run tests
 script: "python unit_tests.py"
