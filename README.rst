@@ -30,7 +30,7 @@ Subscribe to the securities from the Securities table and push the quotes back t
 
 5. Build docker image using the dockerfile provided, create ``capsule`` repository in your EC2 Container Services AWS account
 
-.. code:: python
+.. code:: bash
 
     #Build image
     docker build -t capsule .
@@ -40,7 +40,7 @@ Subscribe to the securities from the Securities table and push the quotes back t
 
 6. Tag and push the image in the repo
 
-.. code:: python
+.. code:: bash
 
     #Tag repo
     docker tag capsule accountid.dkr.ecr.us-east-1.amazonaws.com/capsule
