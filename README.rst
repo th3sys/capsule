@@ -17,15 +17,10 @@ TWS Market Data Adapter is implemented using Interactive Brokers API.
 
 Usage
 =====
-Follow these steps the run IB gateway in a Docker image on AWS EC2 Container Services platform.
-Subscribe to the securities from the Securities table and push the quotes back to Quotes table in DynamoDB.
+Follow these steps the run IB gateway in a docker container on AWS EC2 Container Services platform.
+Subscribe to the securities from the Securities table and push the quotes back to the Quotes table in DynamoDB.
 
-1. To use Capsule create Securities and Quotes tables in DynamoDB using the scripts below:
-
-.. code:: bash
-
-	python create_tables.py
-    python push_items.py
+1. To use Capsule create Securities and Quotes tables in DynamoDB using the scripts ``create_tables.py`` and ``python push_items.py``.
 
 2. Create AWS CloudWatch Log Group ``/aws/docker/Capsule``
 
@@ -35,7 +30,7 @@ Subscribe to the securities from the Securities table and push the quotes back t
 
 5. Build docker image using the dockerfile provided, create ``capsule`` repository in your EC2 Container Services AWS account
 
-.. code:: bash
+.. code:: python
 
     #Build image
     docker build -t capsule .
@@ -45,7 +40,7 @@ Subscribe to the securities from the Securities table and push the quotes back t
 
 6. Tag and push the image in the repo
 
-.. code:: bash
+.. code:: python
 
     #Tag repo
     docker tag capsule accountid.dkr.ecr.us-east-1.amazonaws.com/capsule
