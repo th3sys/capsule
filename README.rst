@@ -3,8 +3,8 @@ CAPSULE - MARKET DATA ADAPTER
 
 This is an implementation of the TWS Market Data Adapter.
 
-.. image:: https://travis-ci.org/th3sys/transfixed.svg?branch=master
- :target: https://travis-ci.org/th3sys/transfixed/
+.. image:: https://api.travis-ci.org/th3sys/capsule.svg?branch=master
+ :target: https://travis-ci.org/th3sys/capsule/
 
 Features
 ========
