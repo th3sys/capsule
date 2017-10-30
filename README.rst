@@ -53,5 +53,7 @@ Subscribe to the securities from the Securities table and push the quotes back t
 
 8. In AWS EC2 Container Services create a Cluster and Container service to run the task definition on a Container instance
 
+9. Deploy the ``nightwatch.py`` script in AWS Lambda function to monitor and start EC2 Container instance
+
 *This product includes software developed by Interactive Brokers (https://www.interactivebrokers.com/).*
 *The steps in the Dockerfile have been lifted from http://www.algoeye.com/blog/running-ib-gateway-on-vps/.*
