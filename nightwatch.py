@@ -11,6 +11,7 @@ import datetime
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import contracts
 
 NumberOfAttempts = []
 
@@ -57,6 +58,7 @@ class CapsuleParams(object):
 
 class CapsuleController(object):
     def __init__(self, params):
+        self.secDef = contracts.SecurityDefinition()
         self.Email = params.Email
         self.Iam = params.Iam
         self.User = params.User
@@ -114,10 +116,18 @@ class CapsuleController(object):
 
         allFound = True
         for security in self.GetSecurities():
+            today = datetime.date.today().strftime("%Y%m%d")
+            symbols = []
             if security['ProductType'] == 'IND':
-                today = datetime.date.today().strftime("%Y%m%d")
-                found = self.GetQuotes(security['Symbol'], today)
-                self.Logger.info('Found Symbols: %s' % found)
+                symbols = [security['Symbol']]
+            if security['ProductType'] == 'FUT':
+                symbols = self.secDef.get_futures(security['Symbol'], 2) # get two front months
+            for symbol in symbols:
+                found = self.GetQuotes(symbol, today)
+                if len(found) > 0:
+                    self.Logger.info('Found Symbols: %s' % found)
+                else:
+                    self.Logger.error('Failed to find data for %s' % symbol)
                 allFound &= len(found) > 0
 
         if allFound:

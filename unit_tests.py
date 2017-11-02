@@ -1,5 +1,7 @@
 import unittest
 import ibmarketdata as ib
+import contracts as cont
+import datetime
 
 
 class Tester(object):
@@ -18,6 +20,33 @@ class TestUtils(unittest.TestCase):
 
     def setUp(self):
         self.symbols = {1: 'A', 2: 'B', 3: 'C'}
+
+    def test_vix_expiry(self):
+        sec = cont.Security()
+        fut = sec.get_next_expiry('VX', datetime.date(2017, 11, 14))
+        print(fut)
+        self.assertEqual(fut, 'VXX7')
+        fut = sec.get_next_expiry('VX', datetime.date(2017, 11, 15))
+        print(fut)
+        self.assertEqual(fut, 'VXZ7')
+        futures = sec.get_futures('VX', 3, datetime.date(2017, 11, 2))
+        print(futures)
+        self.assertEqual(futures, ['VXX7', 'VXZ7', 'VXF8'])
+        futures = sec.get_futures('VX', 2, datetime.date(2017, 11, 2))
+        print(futures)
+        self.assertEqual(futures, ['VXX7', 'VXZ7'])
+        futures = sec.get_futures('VX', 2, datetime.date(2017, 11, 15))
+        print(futures)
+        self.assertEqual(futures, ['VXZ7', 'VXF8'])
+        futures = sec.get_futures('VX', 3, datetime.date(2017, 12, 19))
+        print(futures)
+        self.assertEqual(futures, ['VXZ7', 'VXF8', 'VXG8'])
+        futures = sec.get_futures('VX', 2, datetime.date(2017, 12, 20))
+        print(futures)
+        self.assertEqual(futures, ['VXF8', 'VXG8'])
+        futures = sec.get_futures('VX', 3, datetime.date(2018, 1, 10))
+        print(futures)
+        self.assertEqual(futures, ['VXF8', 'VXG8', 'VXH8'])
 
     def test_dict(self):
         items = [value for key, value in self.symbols.items() if value == 'A']
