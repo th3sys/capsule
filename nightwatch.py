@@ -110,10 +110,6 @@ class CapsuleController(object):
         self.Logger.info(res)
 
     def EndOfDay(self):
-        if self.AttemptsCount() > 3 or len(NumberOfAttempts) > 3:
-            self.SendEmail('Capsule could not retrieve market data after %s attempts' % len(NumberOfAttempts))
-            return
-
         allFound = True
         for security in self.GetSecurities():
             today = datetime.date.today().strftime("%Y%m%d")
@@ -138,6 +134,9 @@ class CapsuleController(object):
             self.Logger.info('Not All Found. Will try again. Restarting EC2 Instance')
             if self.IsInstanceRunning():
                 self.StopInstance()
+            if self.AttemptsCount() > 3 or len(NumberOfAttempts) > 3:
+                self.SendEmail('Capsule could not retrieve market data after %s attempts' % len(NumberOfAttempts))
+                return
             self.StartInstance()
 
     def IsInstanceRunning(self):
