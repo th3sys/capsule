@@ -1,0 +1,58 @@
+{"requiresAttributes": [
+    {
+      "value": null,
+      "name": "com.amazonaws.ecs.capability.ecr-auth",
+      "targetId": null,
+      "targetType": null
+    }
+  ],
+  "taskDefinitionArn": "arn:CapsuleTask:4",
+  "networkMode": "bridge",
+  "status": "ACTIVE",
+  "revision": 4,
+  "taskRoleArn": null,
+  "containerDefinitions": [
+    {
+      "volumesFrom": [],
+      "memory": 2048,
+      "extraHosts": null,
+      "linuxParameters": null,
+      "dnsServers": null,
+      "disableNetworking": null,
+      "dnsSearchDomains": null,
+      "portMappings": [
+        {
+          "hostPort": 4001,
+          "containerPort": 4001,
+          "protocol": "tcp"
+        }
+      ],
+      "hostname": null,
+      "essential": true,
+      "entryPoint": [
+        "/capsule/start.sh",
+        "-D",
+        "FOREGROUND"
+      ],
+      "mountPoints": [],
+      "name": "CapsuleTask",
+      "ulimits": null,
+      "dockerSecurityOptions": null,
+      "environment": [],
+      "links": null,
+      "workingDirectory": null,
+      "readonlyRootFilesystem": null,
+      "image": "arn.dkr.ecr.us-east-1.amazonaws.com/capsule",
+      "command": null,
+      "user": null,
+      "dockerLabels": null,
+      "logConfiguration": null,
+      "cpu": 10,
+      "privileged": null,
+      "memoryReservation": null
+    }
+  ],
+  "placementConstraints": [],
+  "volumes": [],
+  "family": "CapsuleTask"
+}

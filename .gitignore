@@ -1,6 +1,5 @@
 .idea/*
 DockerBuild
-DockerTask.json
 IBController.ini
 credentials.aws
 config.aws
