@@ -22,7 +22,7 @@ class TestUtils(unittest.TestCase):
         self.symbols = {1: 'A', 2: 'B', 3: 'C'}
 
     def test_vix_expiry(self):
-        sec = cont.Security()
+        sec = cont.SecurityDefinition()
         fut = sec.get_next_expiry('VX', datetime.date(2017, 11, 14))
         print(fut)
         self.assertEqual(fut, 'VXX7')
