@@ -81,11 +81,19 @@ def create_securities():
             {
                 'AttributeName': 'Symbol',
                 'KeyType': 'HASH'  # Partition key
+            },
+            {
+                'AttributeName': 'Broker',
+                'KeyType': 'RANGE'  # Sort key
             }
         ],
         AttributeDefinitions=[
             {
                 'AttributeName': 'Symbol',
+                'AttributeType': 'S'
+            },
+            {
+                'AttributeName': 'Broker',
                 'AttributeType': 'S'
             }
         ],

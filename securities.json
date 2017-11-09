@@ -1,6 +1,7 @@
 [
   {
     "Symbol" : "VIX",
+    "Broker" : "IB",
     "ProductType" : "IND",
     "SubscriptionEnabled" : true,
     "TradingEnabled" : false,
@@ -20,6 +21,7 @@
   },
   {
     "Symbol" : "VX",
+    "Broker" : "IB",
     "ProductType" : "FUT",
     "SubscriptionEnabled" : true,
     "TradingEnabled" : true,
@@ -33,6 +35,26 @@
       "MaxPosition": 1,
       "Margin": {
         "Amount" : 6215,
+        "Currency" : "USD"
+      }
+    }
+  },
+  {
+    "Symbol" : "VX",
+    "Broker" : "IG",
+    "ProductType" : "CFD",
+    "SubscriptionEnabled" : false,
+    "TradingEnabled" : true,
+    "Description" : {
+      "Name" : "Volatility Index Future",
+      "Exchange" : "CFE",
+      "MarketGroup" : "Indices"
+    },
+    "Risk" : {
+      "RiskFactor":0.7,
+      "MaxPosition": 100,
+      "Margin": {
+        "Amount" : 100,
         "Currency" : "USD"
       }
     }
