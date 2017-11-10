@@ -38,42 +38,6 @@ def create_quotes():
     print("Table status:", table)
 
 
-def create_order():
-    table = client.create_table(
-        TableName='Orders',
-        KeySchema=[
-            {
-                'AttributeName': 'NewOrderId',
-                'KeyType': 'HASH'  # Partition key
-            },
-            {
-                'AttributeName': 'TransactionTime',
-                'KeyType': 'RANGE'  # Sort key
-            }
-        ],
-        AttributeDefinitions=[
-            {
-                'AttributeName': 'NewOrderId',
-                'AttributeType': 'S'
-            },
-            {
-                'AttributeName': 'TransactionTime',
-                'AttributeType': 'S'
-            },
-
-        ],
-        ProvisionedThroughput={
-            'ReadCapacityUnits': 10,
-            'WriteCapacityUnits': 10
-        }
-    )
-
-    w = client.get_waiter('table_exists')
-    w.wait(TableName='Orders')
-    print("table Orders created")
-    print("Table status:", table)
-
-
 def create_securities():
     table = client.create_table(
         TableName='Securities',
@@ -117,11 +81,6 @@ try:
         waiter = client.get_waiter('table_not_exists')
         waiter.wait(TableName='Quotes.EOD')
         print("table Quotes.EOD deleted")
-    if 'Orders' in client.list_tables()['TableNames']:
-        client.delete_table(TableName='Orders')
-        waiter = client.get_waiter('table_not_exists')
-        waiter.wait(TableName='Orders')
-        print("table Orders deleted")
     if 'Securities' in client.list_tables()['TableNames']:
         client.delete_table(TableName='Securities')
         waiter = client.get_waiter('table_not_exists')
@@ -131,6 +90,5 @@ try:
 except Exception as e:
     print(e)
 
-create_order()
 create_securities()
 create_quotes()
