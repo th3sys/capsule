@@ -71,6 +71,7 @@ class CapsuleController(object):
         db = boto3.resource('dynamodb', region_name=params.Region)
         self.__QuotesEod = db.Table('Quotes.EOD')
         self.__Securities = db.Table('Securities')
+        self.__Orders = db.Table('Orders')
         logging.basicConfig(format='%(asctime)s - %(levelname)s - %(threadName)s - %(message)s')
         self.Logger.info('InstanceController Created. Region: %s Instance: %s' % (params.Region, params.Instance))
 
@@ -109,6 +110,11 @@ class CapsuleController(object):
         res = server.quit()
         self.Logger.info(res)
 
+    def ExecutorCheck(self):
+        pending = self.GetOrders('Status', 'PENDING')
+        if pending is not None and len(pending) > 0:
+            self.SendEmail('There are %s PENDING Orders in Chaos' % len(pending))
+
     def EndOfDay(self):
         allFound = True
         for security in self.GetSecurities():
@@ -117,7 +123,7 @@ class CapsuleController(object):
             if security['ProductType'] == 'IND':
                 symbols = [security['Symbol']]
             if security['ProductType'] == 'FUT':
-                symbols = self.secDef.get_futures(security['Symbol'], 2) # get two front months
+                symbols = self.secDef.get_futures(security['Symbol'], 2)  # get two front months
             for symbol in symbols:
                 found = self.GetQuotes(symbol, today)
                 if len(found) > 0:
@@ -152,6 +158,22 @@ class CapsuleController(object):
         self.__Instance.stop()
         self.__Instance.wait_until_stopped()
         self.Logger.info('Stopped instance: %s' % self.__Instance.instance_id)
+
+    @Utils.reliable
+    def GetOrders(self, key, value):
+        try:
+            self.Logger.info('Calling orders scan attr: %s, %s' % (key, value))
+            response = self.__Orders.scan(FilterExpression=Attr(key).eq(value))
+
+        except ClientError as e:
+            self.Logger.error(e.response['Error']['Message'])
+            return None
+        except Exception as e:
+            self.Logger.error(e)
+            return None
+        else:
+            if 'Items' in response:
+                return response['Items']
 
     @Utils.reliable
     def GetSecurities(self):
@@ -199,6 +221,7 @@ def lambda_handler(event, context):
     params.Smtp = os.environ["NIGHT_WATCH_SMTP"]
 
     controller = CapsuleController(params)
+    controller.ExecutorCheck()
     controller.EndOfDay()
 
 
