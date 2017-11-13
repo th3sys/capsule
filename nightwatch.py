@@ -72,6 +72,9 @@ class CapsuleController(object):
         self.__QuotesEod = db.Table('Quotes.EOD')
         self.__Securities = db.Table('Securities')
         self.__Orders = db.Table('Orders')
+        s3 = boto3.resource('s3')
+        debug = os.environ['DEBUG_FOLDER']
+        self.__debug = s3.Object(debug, 'vix_roll.txt')
         logging.basicConfig(format='%(asctime)s - %(levelname)s - %(threadName)s - %(message)s')
         self.Logger.info('InstanceController Created. Region: %s Instance: %s' % (params.Region, params.Instance))
 
@@ -110,7 +113,22 @@ class CapsuleController(object):
         res = server.quit()
         self.Logger.info(res)
 
-    def ExecutorCheck(self):
+    def ValidateStrategy(self):
+        today = datetime.date.today().strftime("%Y%m%d")
+        fileObj = self.__debug.get()['Body']
+        ch = fileObj.read(1)
+        line = ''
+        while ch:
+            if ch.decode("utf-8") == '\n':
+                if today in line:
+                    return True
+                line = ''
+            else:
+                line += ch.decode("utf-8")
+            ch = fileObj.read(1)
+        return False
+
+    def ValidateExecutor(self):
         pending = self.GetOrders('Status', 'PENDING')
         if pending is not None and len(pending) > 0:
             self.SendEmail('There are %s PENDING Orders in Chaos' % len(pending))
@@ -221,7 +239,11 @@ def lambda_handler(event, context):
     params.Smtp = os.environ["NIGHT_WATCH_SMTP"]
 
     controller = CapsuleController(params)
-    controller.ExecutorCheck()
+    if controller.AttemptsCount() > 3 or len(NumberOfAttempts) > 3:
+        controller.Logger.info('After %s attempts will check the strategy trace' % str(3))
+        if not controller.ValidateStrategy():
+            controller.SendEmail('The VIX Roll strategy left no TRACE file today')
+    controller.ValidateExecutor()
     controller.EndOfDay()
 
 
@@ -234,6 +256,7 @@ def main():
     parser.add_argument('--user', help='SMTP User', required=True)
     parser.add_argument('--password', help='SMTP Password', required=True)
     parser.add_argument('--smtp', help='SMTP Address', required=True)
+    parser.add_argument('--debug', help='Debug Folder', required=True)
     args = parser.parse_args()
     os.environ["NIGHT_WATCH_REGION"] = args.region
     os.environ["NIGHT_WATCH_INSTANCE"] = args.instance
@@ -242,6 +265,7 @@ def main():
     os.environ["NIGHT_WATCH_USER"] = args.user
     os.environ["NIGHT_WATCH_PASSWORD"] = args.password
     os.environ["NIGHT_WATCH_SMTP"] = args.smtp
+    os.environ["DEBUG_FOLDER"] = args.debug
     event = ''
     context = ''
     lambda_handler(event, context)
