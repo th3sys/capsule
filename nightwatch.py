@@ -13,8 +13,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import contracts
 
-NumberOfAttempts = []
-
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
@@ -90,7 +88,7 @@ class CapsuleController(object):
             lines = logs.get_log_events(logGroupName=log_group,
                                         logStreamName=stream['logStreamName'])
             for line in lines['events']:
-                if 'setting nextValidOrderId' in line['message']:
+                if 'LogStream Created:' in line['message']:
                     count += 1
         self.Logger.info('Capsule ran %s times in the last 2 hours' % count)
 
@@ -158,8 +156,8 @@ class CapsuleController(object):
             self.Logger.info('Not All Found. Will try again. Restarting EC2 Instance')
             if self.IsInstanceRunning():
                 self.StopInstance()
-            if self.AttemptsCount() > 3 or len(NumberOfAttempts) > 3:
-                self.SendEmail('Capsule could not retrieve market data after %s attempts' % len(NumberOfAttempts))
+            if self.AttemptsCount() > 3:
+                self.SendEmail('Capsule could not retrieve market data after %s attempts' % str(3))
                 return
             self.StartInstance()
 
@@ -228,7 +226,6 @@ class CapsuleController(object):
 
 
 def lambda_handler(event, context):
-    NumberOfAttempts.append(1)
     params = CapsuleParams()
     params.Region = os.environ["NIGHT_WATCH_REGION"]
     params.Instance = os.environ["NIGHT_WATCH_INSTANCE"]
@@ -239,7 +236,7 @@ def lambda_handler(event, context):
     params.Smtp = os.environ["NIGHT_WATCH_SMTP"]
 
     controller = CapsuleController(params)
-    if controller.AttemptsCount() > 3 or len(NumberOfAttempts) > 3:
+    if controller.AttemptsCount() > 3:
         controller.Logger.info('After %s attempts will check the strategy trace' % str(3))
         if not controller.ValidateStrategy():
             controller.SendEmail('The VIX Roll strategy left no TRACE file today')
