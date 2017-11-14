@@ -152,6 +152,10 @@ class CapsuleController(object):
             self.Logger.info('All Found. Stopping EC2 Instance')
             if self.IsInstanceRunning():
                 self.StopInstance()
+
+            if not self.ValidateStrategy():
+                self.SendEmail('The VIX Roll strategy left no TRACE file today')
+
         else:
             self.Logger.info('Not All Found. Will try again. Restarting EC2 Instance')
             if self.IsInstanceRunning():
@@ -236,10 +240,7 @@ def lambda_handler(event, context):
     params.Smtp = os.environ["NIGHT_WATCH_SMTP"]
 
     controller = CapsuleController(params)
-    if controller.AttemptsCount() > 3:
-        controller.Logger.info('After %s attempts will check the strategy trace' % str(3))
-        if not controller.ValidateStrategy():
-            controller.SendEmail('The VIX Roll strategy left no TRACE file today')
+
     controller.ValidateExecutor()
     controller.EndOfDay()
 
