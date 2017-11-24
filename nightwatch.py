@@ -160,7 +160,7 @@ class CapsuleController(object):
             self.Logger.info('Not All Found. Will try again. Restarting EC2 Instance')
             if self.IsInstanceRunning():
                 self.StopInstance()
-            if self.AttemptsCount() > 3:
+            if self.AttemptsCount() >= 3:
                 self.SendEmail('Capsule could not retrieve market data after %s attempts' % str(3))
                 return
             self.StartInstance()
