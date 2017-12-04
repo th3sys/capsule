@@ -42,7 +42,7 @@
   {
     "Symbol" : "VX",
     "Broker" : "IG",
-    "ProductType" : "CFD",
+    "ProductType" : "SPREAD",
     "SubscriptionEnabled" : false,
     "TradingEnabled" : true,
     "Description" : {
