@@ -8,7 +8,6 @@ subject to the terms and conditions of the IB API Non-Commercial License or the
 
 from ibapi.object_implem import Object
 
-
 class Execution(Object):
 
     def __init__(self):
@@ -29,6 +28,7 @@ class Execution(Object):
         self.evRule =  ""
         self.evMultiplier = 0.
         self.modelCode =  ""
+        self.lastLiquidity = 0
 
     def __str__(self):
         return ",".join((
@@ -48,7 +48,8 @@ class Execution(Object):
             str(self.orderRef),
             str(self.evRule),
             str(self.evMultiplier),
-            str(self.modelCode)))
+            str(self.modelCode),
+            str(self.lastLiquidity)))
      
 
 class ExecutionFilter(Object):

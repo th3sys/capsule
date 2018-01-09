@@ -190,6 +190,11 @@ class Order(Object):
         # native cash quantity
         self.cashQty = UNSET_DOUBLE
 
+        self.mifid2DecisionMaker = ""
+        self.mifid2DecisionAlgo = ""
+        self.mifid2ExecutionTrader = ""
+        self.mifid2ExecutionAlgo = ""
+
 
     def __str__(self):
         s = "%s,%d,%s:" % (self.orderId, self.clientId, self.permId)

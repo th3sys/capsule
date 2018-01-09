@@ -31,7 +31,7 @@ from ibapi.tag_value import TagValue
 from ibapi.scanner import ScanData
 from ibapi.commission_report import CommissionReport
 from ibapi.errors import BAD_MESSAGE
-
+from ibapi.common import *
 
 class HandleInfo(Object):
     def __init__(self, wrap=None, proc=None):
@@ -72,6 +72,8 @@ class Decoder(Object):
         if self.serverVersion >= MIN_SERVER_VER_PAST_LIMIT:
             attrib.canAutoExecute = attrMask & 1 != 0
             attrib.pastLimit = attrMask & 2 != 0
+            if self.serverVersion >= MIN_SERVER_VER_PRE_OPEN_BID_ASK:
+                attrib.preOpen = attrMask & 4 != 0
 
         self.wrapper.tickPrice(reqId, tickType, price, attrib)
 
@@ -97,7 +99,10 @@ class Decoder(Object):
     def processOrderStatusMsg(self, fields):
 
         sMsgId = next(fields)
-        version = decode(int, fields)
+        if self.serverVersion >= MIN_SERVER_VER_MARKET_CAP_PRICE:
+            version = None
+        else:
+            version = decode(int, fields)
         orderId = decode(int, fields)
         status = decode(str, fields)
 
@@ -119,8 +124,13 @@ class Decoder(Object):
         clientId = decode(int, fields) # ver 5 field
         whyHeld = decode(str, fields) # ver 6 field
 
+        if self.serverVersion >= MIN_SERVER_VER_MARKET_CAP_PRICE:
+            mktCapPrice = decode(float, fields)
+        else:
+            mktCapPrice = None
+
         self.wrapper.orderStatus(orderId, status, filled, remaining,
-            avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld)
+            avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice)
 
 
     def processOpenOrder(self, fields):
@@ -518,6 +528,12 @@ class Decoder(Object):
             contract.underSymbol = decode(str, fields)
             contract.underSecType = decode(str, fields)
 
+        if self.serverVersion >= MIN_SERVER_VER_MARKET_RULES:
+            contract.marketRuleIds = decode(str, fields)
+
+        if self.serverVersion >= MIN_SERVER_VER_REAL_EXPIRATION_DATE:
+            contract.realExpirationDate = decode(str, fields)
+
         self.wrapper.contractDetails(reqId, contract)
 
 
@@ -576,6 +592,9 @@ class Decoder(Object):
         if self.serverVersion >= MIN_SERVER_VER_AGG_GROUP:
             contract.aggGroup = decode(int, fields)
 
+        if self.serverVersion >= MIN_SERVER_VER_MARKET_RULES:
+            contract.marketRuleIds = decode(str, fields)
+
         self.wrapper.bondContractDetails(reqId, contract)
 
     def processScannerDataMsg(self, fields):
@@ -613,7 +632,10 @@ class Decoder(Object):
 
     def processExecutionDataMsg(self, fields):
         sMsgId = next(fields)
-        version = decode(int, fields)
+        version = self.serverVersion
+
+        if(self.serverVersion < MIN_SERVER_VER_LAST_LIQUIDITY):
+            version = decode(int, fields)
 
         reqId = -1
         if version >= 7:
@@ -668,6 +690,8 @@ class Decoder(Object):
             exec.evMultiplier = decode(float, fields)
         if self.serverVersion >= MIN_SERVER_VER_MODELS_SUPPORT:
             exec.modelCode = decode(str, fields)
+        if self.serverVersion >= MIN_SERVER_VER_LAST_LIQUIDITY:
+            exec.lastLiquidity = decode(int, fields)
 
         self.wrapper.execDetails(reqId, contract, exec)
 
@@ -1072,6 +1096,173 @@ class Decoder(Object):
 
         self.wrapper.histogramData(reqId,histogram)
 
+    def processRerouteMktDataReq(self, fields):
+        sMsgId = next(fields)
+        reqId = decode(int, fields)
+        conId = decode(int, fields)
+        exchange = decode(str, fields)
+
+        self.wrapper.rerouteMktDataReq(reqId, conId, exchange)
+
+    def processRerouteMktDepthReq(self, fields):
+        sMsgId = next(fields)
+        reqId = decode(int, fields)
+        conId = decode(int, fields)
+        exchange = decode(str, fields)
+
+        self.wrapper.rerouteMktDepthReq(reqId, conId, exchange)
+
+    def processMarketRuleMsg(self, fields):
+        sMsgId = next(fields)
+        marketRuleId = decode(int, fields)
+
+        nPriceIncrements = decode(int, fields)
+        priceIncrements = []
+
+        if nPriceIncrements > 0:
+            for idxPrcInc in range(nPriceIncrements):
+                prcInc = PriceIncrement()
+                prcInc.lowEdge = decode(float, fields)
+                prcInc.increment = decode(float, fields)
+                priceIncrements.append(prcInc)
+
+        self.wrapper.marketRule(marketRuleId, priceIncrements)
+
+    def processPnLMsg(self, fields):
+        sMsgId = next(fields)
+        reqId = decode(int, fields)
+        dailyPnL = decode(float, fields)
+        unrealizedPnL = None
+        realizedPnL = None
+
+        if self.serverVersion >= MIN_SERVER_VER_UNREALIZED_PNL:
+            unrealizedPnL = decode(float, fields)
+
+        if self.serverVersion >= MIN_SERVER_VER_REALIZED_PNL:
+            realizedPnL = decode(float, fields)
+
+        self.wrapper.pnl(reqId, dailyPnL, unrealizedPnL, realizedPnL)
+
+    def processPnLSingleMsg(self, fields):
+        sMsgId = next(fields)
+        reqId = decode(int, fields)
+        pos = decode(int, fields)
+        dailyPnL = decode(float, fields)
+        unrealizedPnL = None
+        realizedPnL = None
+
+        if self.serverVersion >= MIN_SERVER_VER_UNREALIZED_PNL:
+            unrealizedPnL = decode(float, fields)
+
+        if self.serverVersion >= MIN_SERVER_VER_REALIZED_PNL:
+            realizedPnL = decode(float, fields)
+
+        value = decode(float, fields)
+
+        self.wrapper.pnlSingle(reqId, pos, dailyPnL, unrealizedPnL, realizedPnL, value)
+
+    def processHistoricalTicks(self, fields):
+        sMsgId = next(fields)
+        reqId = decode(int, fields)
+        tickCount = decode(int, fields)
+
+        ticks = []
+
+        for i in range(tickCount):
+            historicalTick = HistoricalTick()
+            historicalTick.time = decode(int, fields)
+            next(fields) # for consistency
+            historicalTick.price = decode(float, fields)
+            historicalTick.size = decode(int, fields)
+            ticks.append(historicalTick)
+
+        done = decode(bool, fields)
+
+        self.wrapper.historicalTicks(reqId, ticks, done)
+
+    def processHistoricalTicksBidAsk(self, fields):
+        sMsgId = next(fields)
+        reqId = decode(int, fields)
+        tickCount = decode(int, fields)
+
+        ticks = []
+
+        for i in range(tickCount):
+            historicalTickBidAsk = HistoricalTickBidAsk()
+            historicalTickBidAsk.time = decode(int, fields)
+            historicalTickBidAsk.mask = decode(int, fields)
+            historicalTickBidAsk.priceBid = decode(float, fields)
+            historicalTickBidAsk.priceAsk = decode(float, fields)
+            historicalTickBidAsk.sizeBid = decode(int, fields)
+            historicalTickBidAsk.sizeAsk = decode(int, fields)
+            ticks.append(historicalTickBidAsk)
+
+        done = decode(bool, fields)
+
+        self.wrapper.historicalTicksBidAsk(reqId, ticks, done)
+
+    def processHistoricalTicksLast(self, fields):
+        sMsgId = next(fields)
+        reqId = decode(int, fields)
+        tickCount = decode(int, fields)
+
+        ticks = []
+
+        for i in range(tickCount):
+            historicalTickLast = HistoricalTickLast()
+            historicalTickLast.time = decode(int, fields)
+            historicalTickLast.mask = decode(int, fields)
+            historicalTickLast.price = decode(float, fields)
+            historicalTickLast.size = decode(int, fields)
+            historicalTickLast.exchange = decode(str, fields)
+            historicalTickLast.specialConditions = decode(str, fields)
+            ticks.append(historicalTickLast)
+
+        done = decode(bool, fields)
+
+        self.wrapper.historicalTicksLast(reqId, ticks, done)
+
+    def processTickByTickMsg(self, fields):
+        sMsgId = next(fields)
+        reqId = decode(int, fields)
+        tickType = decode(int, fields)
+        time = decode(int, fields)
+
+        if tickType == 0:
+            # None
+            pass
+        elif tickType == 1 or tickType == 2:
+            # Last or AllLast
+            price = decode(float, fields)
+            size = decode(int, fields)
+            mask = decode(int, fields)
+            attribs = TickAttrib()
+            attribs.pastLimit = mask & 1 != 0
+            attribs.unreported = mask & 2 != 0
+            exchange = decode(str, fields)
+            specialConditions = decode(str, fields)
+
+            self.wrapper.tickByTickAllLast(reqId, tickType, time, price, size, attribs,
+                                           exchange, specialConditions)
+        elif tickType == 3:
+            # BidAsk
+            bidPrice = decode(float, fields)
+            askPrice = decode(float, fields)
+            bidSize = decode(int, fields)
+            askSize = decode(int, fields)
+            mask = decode(int, fields)
+            attribs = TickAttrib()
+            attribs.bidPastLow = mask & 1 != 0
+            attribs.askPastHigh = mask & 2 != 0
+
+            self.wrapper.tickByTickBidAsk(reqId, time, bidPrice, askPrice, bidSize,
+                                          askSize, attribs)
+        elif tickType == 4:
+            # MidPoint
+            midPoint = decode(float, fields)
+
+            self.wrapper.tickByTickMidPoint(reqId, time, midPoint)
+
     ######################################################################
 
     def discoverParams(self):
@@ -1102,7 +1293,7 @@ class Decoder(Object):
 
     def interpretWithSignature(self, fields, handleInfo):
         if handleInfo.wrapperParams is None:
-            logging.debug("%s: no param info in ", fields, handleInfo)
+            logging.debug("%s: no param info in", fields, handleInfo)
             return
 
         nIgnoreFields = 2 #bypass msgId and versionId faster this way
@@ -1117,7 +1308,10 @@ class Decoder(Object):
         for (pname, param) in handleInfo.wrapperParams.items():
             if pname != "self":
                 logging.debug("field %s ", fields[fieldIdx])
-                arg = fields[fieldIdx].decode()
+                try:
+                    arg = fields[fieldIdx].decode('UTF-8')
+                except UnicodeDecodeError:
+                    arg = fields[fieldIdx].decode('latin-1')
                 logging.debug("arg %s type %s", arg, param.annotation)
                 if param.annotation is int:
                     arg = int(arg)
@@ -1127,11 +1321,9 @@ class Decoder(Object):
                 args.append(arg)
                 fieldIdx += 1
 
-        #handleInfo.wrapperMeth(self.wrapper, *args)
-        method = getattr(self.wrapper.__class__, handleInfo.wrapperMeth.__name__)
+        method = getattr(self.wrapper, handleInfo.wrapperMeth.__name__)
         logging.debug("calling %s with %s %s", method, self.wrapper, args)
-        method(self.wrapper, *args)
-
+        method(*args)
 
     def interpret(self, fields):
         if len(fields) == 0:
@@ -1149,6 +1341,7 @@ class Decoder(Object):
 
         try:
             if handleInfo.wrapperMeth is not None:
+                logging.debug("In interpret(), handleInfo: %s", handleInfo)
                 self.interpretWithSignature(fields, handleInfo)
             elif handleInfo.processMeth is not None:
                 handleInfo.processMeth(self, iter(fields))
@@ -1224,7 +1417,16 @@ class Decoder(Object):
         IN.NEWS_ARTICLE: HandleInfo(proc=processNewsArticle),
         IN.HISTORICAL_NEWS: HandleInfo(proc=processHistoricalNews),
         IN.HISTORICAL_NEWS_END: HandleInfo(proc=processHistoricalNewsEnd),
-        IN.HISTOGRAM_DATA: HandleInfo(proc=processHistogramData)
+        IN.HISTOGRAM_DATA: HandleInfo(proc=processHistogramData),
+        IN.REROUTE_MKT_DATA_REQ: HandleInfo(proc=processRerouteMktDataReq),
+        IN.REROUTE_MKT_DEPTH_REQ: HandleInfo(proc=processRerouteMktDepthReq),
+        IN.MARKET_RULE: HandleInfo(proc=processMarketRuleMsg),
+        IN.PNL: HandleInfo(proc=processPnLMsg),
+        IN.PNL_SINGLE: HandleInfo(proc=processPnLSingleMsg),
+        IN.HISTORICAL_TICKS: HandleInfo(proc=processHistoricalTicks),
+        IN.HISTORICAL_TICKS_BID_ASK: HandleInfo(proc=processHistoricalTicksBidAsk),
+        IN.HISTORICAL_TICKS_LAST: HandleInfo(proc=processHistoricalTicksLast),
+        IN.TICK_BY_TICK: HandleInfo(proc=processTickByTickMsg)
    }
 
 

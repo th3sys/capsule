@@ -54,8 +54,8 @@ ADD docker_files/credentials.aws /root/.aws/credentials
 ADD docker_files/config.aws /root/.aws/config
 RUN mkdir /capsule/api
 RUN mkdir /capsule/ibapi
-RUN wget http://interactivebrokers.github.io/downloads/twsapi_macunix.973.05.zip
-RUN unzip -o twsapi_macunix.973.05.zip -d /capsule/api
+RUN wget http://interactivebrokers.github.io/downloads/twsapi_macunix.973.06.zip
+RUN unzip -o twsapi_macunix.973.06.zip -d /capsule/api
 RUN cp -r /capsule/api/IBJts/source/pythonclient/ibapi/* /capsule/ibapi
 
 # Scripts

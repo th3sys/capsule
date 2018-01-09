@@ -124,7 +124,7 @@ class EWrapper:
     def orderStatus(self, orderId:OrderId , status:str, filled:float,
                     remaining:float, avgFillPrice:float, permId:int,
                     parentId:int, lastFillPrice:float, clientId:int,
-                    whyHeld:str):
+                    whyHeld:str, mktCapPrice: float):
         """This event is called whenever the status of an order changes. It is
         also fired after reconnecting to TWS if the client has any open orders.
 
@@ -640,4 +640,51 @@ class EWrapper:
 
     def historicalDataUpdate(self, reqId: int, bar: BarData):
         """returns updates in real time when keepUpToDate is set to True"""
+        self.logAnswer(current_fn_name(), vars())
+
+    def rerouteMktDataReq(self, reqId: int, conId: int, exchange: str):
+        """returns reroute CFD contract information for market data request"""
+        self.logAnswer(current_fn_name(), vars())
+
+    def rerouteMktDepthReq(self, reqId: int, conId: int, exchange: str):
+        """returns reroute CFD contract information for market depth request"""
+        self.logAnswer(current_fn_name(), vars())
+
+    def marketRule(self, marketRuleId: int, priceIncrements: ListOfPriceIncrements):
+        """returns minimum price increment structure for a particular market rule ID"""
+        self.logAnswer(current_fn_name(), vars())
+
+    def pnl(self, reqId: int, dailyPnL: float, unrealizedPnL: float, realizedPnL: float):
+        """returns the daily PnL for the account"""
+        self.logAnswer(current_fn_name(), vars())
+
+    def pnlSingle(self, reqId: int, pos: int, dailyPnL: float, unrealizedPnL: float, realizedPnL: float, value: float):
+        """returns the daily PnL for a single position in the account"""
+        self.logAnswer(current_fn_name(), vars())
+
+    def historicalTicks(self, reqId: int, ticks: ListOfHistoricalTick, done: bool):
+        """returns historical tick data when whatToShow=MIDPOINT"""
+        self.logAnswer(current_fn_name(), vars())
+
+    def historicalTicksBidAsk(self, reqId: int, ticks: ListOfHistoricalTickBidAsk, done: bool):
+        """returns historical tick data when whatToShow=BID_ASK"""
+        self.logAnswer(current_fn_name(), vars())
+
+    def historicalTicksLast(self, reqId: int, ticks: ListOfHistoricalTickLast, done: bool):
+        """returns historical tick data when whatToShow=TRADES"""
+        self.logAnswer(current_fn_name(), vars())
+
+    def tickByTickAllLast(self, reqId: int, tickType: int, time: int, price: float,
+                          size: int, attribs: TickAttrib, exchange: str,
+                          specialConditions: str):
+        """returns tick-by-tick data for tickType = "Last" or "AllLast" """
+        self.logAnswer(current_fn_name(), vars())
+
+    def tickByTickBidAsk(self, reqId: int, time: int, bidPrice: float, askPrice: float,
+                         bidSize: int, askSize: int, attribs: TickAttrib):
+        """returns tick-by-tick data for tickType = "BidAsk" """
+        self.logAnswer(current_fn_name(), vars())
+
+    def tickByTickMidPoint(self, reqId: int, time: int, midPoint: float):
+        """returns tick-by-tick data for tickType = "MidPoint" """
         self.logAnswer(current_fn_name(), vars())

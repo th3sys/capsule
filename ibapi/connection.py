@@ -91,12 +91,8 @@ class Connection:
 
 
     def recvMsg(self):
-        logging.debug("acquiring lock")
-        self.lock.acquire()
-        logging.debug("acquired lock")
         if not self.isConnected():
             logging.debug("recvMsg attempted while not connected, releasing lock")
-            self.lock.release()
             return b""
         try:
             buf = self._recvAllMsg()
@@ -105,10 +101,6 @@ class Connection:
             buf = b""
         else:
             pass
-        finally:
-            logging.debug("releasing lock")
-            self.lock.release()
-            logging.debug("release lock")
 
         return buf            
     

@@ -23,31 +23,27 @@ class EReader(Thread):
         super().__init__()
         self.conn = conn
         self.msg_queue = msg_queue
-        self.prevBuf = b""
 
     def run(self):
+        buf = b""
         while self.conn.isConnected():
         
-            buf = self.prevBuf + self.conn.recvMsg()
-            logging.debug("reader loop, prevBuf.size: %d recvd size: %d buf %s",
-                len(self.prevBuf), len(buf), buf)
-           
+            data = self.conn.recvMsg()
+            logging.debug("reader loop, recvd size %d", len(data))
+            buf += data
+            
             while len(buf) > 0:
                 (size, msg, buf) = comm.read_msg(buf)
                 #logging.debug("resp %s", buf.decode('ascii'))
                 logging.debug("size:%d msg.size:%d msg:|%s| buf:%s|", size,
                     len(msg), buf, "|")
 
-                if len(msg) == size:
+                if msg:
                     self.msg_queue.put(msg)
-                    self.prevBuf = b""
-                elif len(msg) < size:
-                    logging.debug("more incoming packet(s) are needed ")
-                    self.prevBuf = buf
-                    break
                 else:
-                    logging.error("recvd bigger msg (%d) than expected (%d)", 
-                        len(msg), size)
+                    logging.debug("more incoming packet(s) are needed ")
+                    break
 
         logging.debug("EReader thread finished")
+
 

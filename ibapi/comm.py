@@ -49,6 +49,8 @@ def make_field_handle_empty(val) -> str:
 
 def read_msg(buf:bytes) -> tuple:
     """ first the size prefix and then the corresponding msg payload """
+    if len(buf) < 4:
+        return (0, "", buf)
     size = struct.unpack("!I", buf[0:4])[0]
     logging.debug("read_msg: size: %d", size)
     if len(buf) - 4 >= size:
