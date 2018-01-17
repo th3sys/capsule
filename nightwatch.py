@@ -131,6 +131,10 @@ class CapsuleController(object):
         if pending is not None and len(pending) > 0:
             self.SendEmail('There are %s PENDING Orders in Chaos' % len(pending))
 
+        failed = self.GetOrders('Status', 'FAILED')
+        if failed is not None and len(failed) > 0:
+            self.SendEmail('There are %s FAILED Orders in Chaos' % len(failed))
+
     def EndOfDay(self):
         allFound = True
         for security in self.GetSecurities():
