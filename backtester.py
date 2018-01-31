@@ -171,12 +171,9 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
 
     def start(self):
 
-        # items = [('VIX', 'FUT', 'CFE', 'VX', '20171220', 'VXZ7')]
         items = [('VIX', 'IND', 'CBOE', '', '', 'VIX')]
-        # items = [('VIX', 'FUT', 'CFE', 'VX', '20180214', 'VXG8')]
-        # items = []
         nxt = self.__start
-        while nxt <= self.__end:
+        while nxt < self.__end:
             contract = self.GetContract(nxt)
             items.append(contract)
             nxt = nxt + relativedelta(months=1)
@@ -189,7 +186,8 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
             validated.exchange = exch
             validated.tradingClass = tc
             validated.lastTradeDateOrContractMonth = exp
-            validated.includeExpired = True
+            if typ == 'FUT':
+                validated.includeExpired = True
             validated.localSymbol = loc
 
             hId = self.nextReqId()
