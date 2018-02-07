@@ -1,22 +1,22 @@
 import argparse
 import datetime
-from dateutil.relativedelta import relativedelta
 import decimal
 import json
+import os
 import queue
 import time
+from dateutil.relativedelta import relativedelta
 
 import boto3
 from botocore.exceptions import ClientError
-from contracts import SecurityDefinition
 
 import ibapi.wrapper
+from contracts import SecurityDefinition
 from ibapi import (comm)
 from ibapi.client import EClient
 from ibapi.common import *
 from ibapi.contract import Contract
 from ibapi.errors import *
-from ibapi.ticktype import TickType, TickTypeEnum
 from ibapi.utils import *
 from ibapi.utils import (BadMessage)
 
@@ -95,9 +95,10 @@ class InterruptableClient(EClient):
 
 
 class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
-    def __init__(self, start, end):
+    def __init__(self, start, end, local):
         self.__start = start.date()
         self.__end = end.date()
+        self.local = local
         self.months = int((end.date() - start.date()).days / 30)
 
         self.Logger = logging.getLogger()
@@ -169,9 +170,49 @@ class IbApp(InterruptableClient, ibapi.wrapper.EWrapper):
         contract = ('VIX', 'FUT', 'CFE', 'VX', exp.strftime('%Y%m%d'), symbol)
         return contract
 
+    @staticmethod
+    def file_read_from_tail(name, lines):
+        found = []
+        with open(name) as f:
+            for line in f:
+                found.append(line)
+
+            return found[-lines:][::-1][1:]
+
+    def load(self):
+        for f in os.listdir("data"):
+            name = f.replace("_VX.csv", "")
+            sym = name.replace("CFE_", "VX")
+            sym = sym[:3] + sym[4:]
+            self.Logger.info('Processing %s' % f)
+            # with open("data/%s" % f) as file:
+            file = IbApp.file_read_from_tail("data/%s" % f, 30)
+            for line in file:
+                if 'CFE data is compiled' in line or 'Trade Date' in line:
+                    continue
+                parts = line.split(',')
+                date = datetime.datetime.strptime(parts[0], '%m/%d/%Y').date()
+                symbol = self.sec.get_next_expiry('VX', date)
+                exp = self.sec.get_next_expiry_date('VX', date)
+                if exp - date > datetime.timedelta(days=31):
+                    self.Logger.error('File date %s, Exp %s' % (date, exp))
+                if symbol != sym:
+                    self.Logger.error('File Symbol %s, Capsule Symbol %s' % (sym, symbol))
+                opn = float(parts[2])
+                high = float(parts[3])
+                low = float(parts[4])
+                close = float(parts[5])
+                volume = int(parts[8])
+                barCount = int(parts[10])
+                if close != 0:
+                    self.Logger.info("%s %s %s %s %s %s %s %s"
+                                     % (sym, date, opn, close, high, low, volume, barCount))
+                    self.UpdateQuote(sym, date.strftime('%Y%m%d'), opn, close, high, low, volume, barCount)
+
     def start(self):
 
         items = [('VIX', 'IND', 'CBOE', '', '', 'VIX')]
+
         nxt = self.__start
         while nxt < self.__end:
             contract = self.GetContract(nxt)
@@ -270,13 +311,17 @@ def main():
     parser.add_argument('--clientId', help='IB client id', type=int, required=True)
     parser.add_argument('--start', help='Start', type=lambda x: datetime.datetime.strptime(x, '%Y%m%d'), required=True)
     parser.add_argument('--end', help='End', type=lambda x: datetime.datetime.strptime(x, '%Y%m%d'), required=True)
+    parser.add_argument('--files', help='Load local files', type=lambda x: False if x == 'False' else True,
+                        required=True)
     args = parser.parse_args()
 
-    app = IbApp(args.start, args.end)
-    app.connect(args.host, args.port, args.clientId)
-    app.Logger.info("serverVersion:%s connectionTime:%s" % (app.serverVersion(), app.twsConnectionTime()))
-
-    app.loop()
+    app = IbApp(args.start, args.end, args.files)
+    if not args.files:
+        app.connect(args.host, args.port, args.clientId)
+        app.Logger.info("serverVersion:%s connectionTime:%s" % (app.serverVersion(), app.twsConnectionTime()))
+        app.loop()
+    else:
+        app.load()
 
 
 if __name__ == "__main__":
