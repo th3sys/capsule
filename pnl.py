@@ -19,19 +19,19 @@ with open('data/a_pnl.csv', 'w') as w:
             if roll > 0.1 and not open_sell:
                 open_sell = True
                 sell = future_close
-                line += ',%s,,SELL' % str(future_close)
+                line = line.rstrip('\n') + ',%s,,SELL,\n' % str(future_close)
             elif roll < -0.1 and not open_buy:
                 open_buy = True
                 buy = future_close
-                line += ',%s,,BUY' % str(-1*future_close)
+                line = line.rstrip('\n') + ',%s,,BUY\n' % str(-1*future_close)
             elif days == 1 and open_sell:
                 open_sell = False
-                line += ',%s,%s,' % (str(-1*future_close), sell-future_close)
+                line = line.rstrip('\n') + ',%s,%s,\n' % (str(-1*future_close), round(sell-future_close, 2))
                 print("Profit: %s" % (sell-future_close))
                 pnl += (sell-future_close)
             elif days == 1 and open_buy:
                 open_buy = False
-                line += ',%s,%s,' % (str(future_close), future_close - buy)
+                line = line.rstrip('\n') + ',%s,%s,\n' % (str(future_close), round(future_close - buy, 2))
                 print("Profit: %s" % (future_close - buy))
                 pnl += (future_close - buy)
             w.write(line)
