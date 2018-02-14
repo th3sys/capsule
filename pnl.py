@@ -16,10 +16,12 @@ with open('data/a_pnl.csv', 'w') as w:
                 w.write(line)
                 continue
             parts = line.split(',')
-            date = datetime.strptime(parts[4], '%Y%m%d')
-            days = int(parts[8])
-            future_close = float(parts[6])
-            roll = float(parts[9])
+            date = datetime.strptime(parts[0], '%Y%m%d')
+            days = int(parts[4])
+            future_close = float(parts[2])
+            roll = float(parts[5])
+            if (date - prev_date).days > 5:
+                print('ERROR: Gap %s - %s' % (prev_date, date))
             if roll > 0.1 and position > -1 and days > 1:
                 position -= 1
                 pnl += future_close
