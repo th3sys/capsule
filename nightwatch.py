@@ -12,6 +12,9 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import contracts
+from pyIG.rest import IGParams, IGClient, Order, OrderType, Side, Money
+import asyncio
+import uuid
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -126,6 +129,149 @@ class CapsuleController(object):
             ch = fileObj.read(1)
         return False
 
+    @Utils.reliable
+    def SuspendTrading(self, symbol, broker):
+        try:
+
+            response = self.__Securities.update_item(
+                Key={
+                    'Symbol': symbol,
+                    'Broker': broker,
+                },
+                UpdateExpression="set #te = :te",
+                ExpressionAttributeNames={
+                    '#te': 'TradingEnabled'
+                },
+                ExpressionAttributeValues={
+                    ':te': False
+                },
+                ReturnValues="UPDATED_NEW")
+
+        except ClientError as e:
+            self.Logger.error(e.response['Error']['Message'])
+        except Exception as e:
+            self.Logger.error(e)
+        else:
+            self.Logger.info('Security Updated')
+            self.Logger.info(json.dumps(response, indent=4, cls=DecimalEncoder))
+            return response
+
+    @Utils.reliable
+    def SendOrder(self, symbol, maturity, side, size, price, orderType, fillTime, dealId, broker, productType):
+        try:
+            order = {
+                "Side": side,
+                "Size": decimal.Decimal(str(size)),
+                "OrdType": orderType}
+            trade = {
+              "FillTime": fillTime,
+              "Side": side,
+              "FilledSize": decimal.Decimal(str(size)),
+              "Price": decimal.Decimal(str(price)),
+              "Broker": {"Name": broker, "RefType": "dealId", "Ref": dealId},
+            }
+            strategy = {
+                "Name": "SYSTEM",
+                "Reason": "STOP_TRIGGERED"
+            }
+
+            response = self.__Orders.update_item(
+                Key={
+                    'OrderId': str(uuid.uuid4().hex),
+                    'TransactionTime': str(time.time()),
+                },
+                UpdateExpression="set #st = :st, #s = :s, #m = :m, #p = :p, #b = :b, #o = :o, #t = :t, #str = :str",
+                ExpressionAttributeNames={
+                    '#st': 'Status',
+                    '#s': 'Symbol',
+                    '#m': 'Maturity',
+                    '#p': 'ProductType',
+                    '#b': 'Broker',
+                    '#o': 'Order',
+                    '#t': 'Trade',
+                    '#str': 'Strategy'
+                },
+                ExpressionAttributeValues={
+                    ':st': 'FILLED',
+                    ':s': symbol,
+                    ':m': maturity,
+                    ':p': productType,
+                    ':b': broker,
+                    ':o': order,
+                    ':t': trade,
+                    ':str': strategy
+                },
+                ReturnValues="UPDATED_NEW")
+
+        except ClientError as e:
+            self.Logger.error(e.response['Error']['Message'])
+        except Exception as e:
+            self.Logger.error(e)
+        else:
+            self.Logger.info('Order Created')
+            self.Logger.info(json.dumps(response, indent=4, cls=DecimalEncoder))
+            return response
+
+    def FindSystemStopOrders(self):
+        """
+            Update Orders table if the stop order was executed by the broker
+        :return:
+            None
+        """
+        params = IGParams()
+        params.Url = os.environ['IG_URL']
+        params.Key = os.environ['X_IG_API_KEY']
+        params.Identifier = os.environ['IDENTIFIER']
+        params.Password = os.environ['PASSWORD']
+
+        self.Logger.info('Checking if any stop order was triggered')
+
+        async def read():
+            async with IGClient(params, self.Logger) as client:
+                auth = await client.Login()
+                self.Logger.info('Auth: %s' % auth)
+
+                lastMonth = datetime.date.today() - datetime.timedelta(days=30)
+                activities = await client.GetActivities(lastMonth.strftime('%Y-%m-%d'), True)
+                self.Logger.info('activities: %s' % activities)
+                await client.Logout()
+
+                if 'activities' in activities:
+                    stopTriggered = [tran for tran in activities['activities']
+                                     if tran['channel'] == 'SYSTEM' and 'details' in tran]
+
+                    if len(stopTriggered) == 0:
+                        self.Logger.info('No stops were triggered')
+                        return
+
+                    filled = self.GetOrders('Status', 'FILLED')
+                    self.Logger.info('All filled %s' % filled)
+                    for tran in stopTriggered:
+                        for action in tran['details']['actions']:
+                            if action['actionType'] == 'POSITION_CLOSED':
+                                self.Logger.info('affectedDealId: %s' % action['affectedDealId'])
+                                already_done = [o for o in filled if 'Broker'in o['Trade'] and 'Ref'
+                                                in o['Trade']['Broker'] and o['Trade']['Broker']['Ref'] == tran['dealId']
+                                                and o['Strategy']['Name'] == 'SYSTEM']
+                                if len(already_done) == 1:
+                                    self.Logger.info('Already filled this unaccounted stop %s' % tran['dealId'])
+                                    continue
+
+                                found = [o for o in filled if 'Broker'in o['Trade'] and 'Ref' in o['Trade']['Broker']
+                                         and o['Trade']['Broker']['Ref'] == action['affectedDealId']]
+                                if len(found) == 1:
+                                    f = found[0]
+                                    self.Logger.info('Unaccounted stop found %s' % found)
+                                    self.SendOrder(f['Symbol'], f['Maturity'], tran['details']['direction'],
+                                                   tran['details']['size'], tran['details']['level'],
+                                                   'STOP', tran['date'], tran['dealId'], 'IG', f['ProductType'])
+                                    self.SuspendTrading(f['Symbol'], 'IG')
+                                    self.SendEmail('STOP Order was triggered by IG. Trading in %s is suspended'
+                                                   % f['Symbol'])
+
+        app_loop = asyncio.get_event_loop()
+        app_loop.run_until_complete(read())
+
     def ValidateExecutor(self):
         pending = self.GetOrders('Status', 'PENDING')
         if pending is not None and len(pending) > 0:
@@ -137,7 +283,7 @@ class CapsuleController(object):
 
     def EndOfDay(self):
         allFound = True
-        for security in self.GetSecurities():
+        for security in filter(lambda x: x['SubscriptionEnabled'], self.GetSecurities()):
             today = datetime.date.today().strftime("%Y%m%d")
             symbols = []
             if security['ProductType'] == 'IND':
@@ -245,6 +391,7 @@ def lambda_handler(event, context):
 
     controller = CapsuleController(params)
 
+    controller.FindSystemStopOrders()
     controller.ValidateExecutor()
     controller.EndOfDay()
 
