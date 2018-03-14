@@ -262,10 +262,12 @@ class CapsuleController(object):
                                 if len(found) == 1:
                                     f = found[0]
                                     self.Logger.info('Unaccounted stop found %s' % found)
+                                    self.SuspendTrading(f['Symbol'], 'IG')
+
                                     self.SendOrder(f['Symbol'], f['Maturity'], tran['details']['direction'],
                                                    tran['details']['size'], tran['details']['level'],
                                                    'STOP', tran['date'], tran['dealId'], 'IG', f['ProductType'])
-                                    self.SuspendTrading(f['Symbol'], 'IG')
+
                                     self.SendEmail('STOP Order was triggered by IG. Trading in %s is suspended'
                                                    % f['Symbol'])
 
