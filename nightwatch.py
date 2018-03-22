@@ -12,7 +12,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import contracts
-from pyIG.rest import IGParams, IGClient, Order, OrderType, Side, Money
+from rest import IGParams, IGClient
 import asyncio
 import uuid
 
@@ -236,7 +236,7 @@ class CapsuleController(object):
                 self.Logger.info('activities: %s' % activities)
                 await client.Logout()
 
-                if 'activities' in activities:
+                if activities is not None and 'activities' in activities and len(activities['activities']) > 0:
                     stopTriggered = [tran for tran in activities['activities']
                                      if tran['channel'] == 'SYSTEM' and 'details' in tran]
 
@@ -393,7 +393,11 @@ def lambda_handler(event, context):
 
     controller = CapsuleController(params)
 
-    controller.FindSystemStopOrders()
+    try:
+        controller.FindSystemStopOrders()
+    except Exception as e:
+        controller.Logger.error('FindSystemStopOrders: %s' % e)
+
     controller.ValidateExecutor()
     controller.EndOfDay()
 
