@@ -7,7 +7,7 @@ WORKINGDIR=$ROOTDIR/$INSTANCE
 JAVA_HOME=/usr
 PATH=$JAVA_HOME/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 JAVA=$JAVA_HOME/bin/java
-COMMAND="$JAVA -cp jts.jar:total.2013.jar:IBController.jar ibcontroller.IBGatewayController IBController.ini"
+COMMAND="$JAVA -cp jts4launch-963.jar:locales.jar:log4j-api-2.5.jar:log4j-core-2.5.jar:total-2015c.jar:twslaunch-963.jar:IBController.jar ibcontroller.IBGatewayController IBController.ini"
 PIDFILE=$WORKINGDIR/ibgateway.pid
 LOGFILE=$WORKINGDIR/ibgateway.log
 

@@ -35,13 +35,11 @@ RUN update-alternatives --config javac
 
 # Install IB
 RUN cd /capsule
-RUN wget https://github.com/ib-controller/ib-controller/releases/download/2.11.0/IBControllerV2-11-0.zip
-RUN wget https://download2.interactivebrokers.com/download/unixmacosx_latest.jar
-RUN jar xf unixmacosx_latest.jar
-RUN cp IBJts/* /capsule/sim/gw
-RUN rm -rf IBJts
+RUN wget https://github.com/ib-controller/ib-controller/releases/download/3.4.0/IBController-3.4.0.zip
+RUN wget https://github.com/th3sys/capsule/raw/master/IBJts.963.zip
 RUN apt-get install -y unzip
-RUN unzip IBControllerV2-11-0.zip -d /capsule/sim/gw
+RUN unzip IBController-3.4.0.zip -d /capsule/sim/gw
+RUN unzip IBJts.963.zip -d /capsule/sim/gw
 ADD docker_files/IBController.ini /capsule/sim/gw/IBController.ini
 ADD docker_files/gw.sh /capsule/gw.sh
 
@@ -64,5 +62,5 @@ ADD docker_files/supervisord.conf /capsule/supervisord.conf
 ADD docker_files/start.sh /capsule/start.sh
 RUN chmod +x /capsule/start.sh
 
-EXPOSE 4001
+EXPOSE 4002
 ENTRYPOINT ["/capsule/start.sh", "-D", "FOREGROUND"]
